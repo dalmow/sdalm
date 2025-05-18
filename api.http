@@ -1,1 +1,8 @@
-GET http://localhost:3333/ping
+POST http://localhost:3333/shorten
+Content-Type: application/json
+
+{
+  "url": "https://www.google.com"
+}
+###
+GET http://localhost:3333/Gq8adQ
