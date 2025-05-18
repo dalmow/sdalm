@@ -10,6 +10,7 @@ import (
 type Config struct {
 	AppPort     string
 	DatabaseUrl string
+	BasePath    string
 }
 
 func LoadConfig() (*Config, error) {
@@ -21,10 +22,15 @@ func LoadConfig() (*Config, error) {
 	conf := &Config{
 		AppPort:     viper.GetString("PORT"),
 		DatabaseUrl: viper.GetString("DATABASE_URL"),
+		BasePath:    viper.GetString("BASE_PATH"),
 	}
 
 	if conf.DatabaseUrl == "" {
 		log.Fatal("Database url not provided")
+	}
+
+	if conf.BasePath == "" {
+		log.Fatal("Base path url not provided")
 	}
 
 	return conf, nil

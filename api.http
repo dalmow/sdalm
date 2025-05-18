@@ -1,1 +1,6 @@
-GET http://localhost:3333/healthcheck
+POST http://localhost:3333/shorten
+Content-Type: application/json
+
+{
+  "url": "www.google.com"
+}
