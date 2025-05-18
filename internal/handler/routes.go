@@ -6,4 +6,5 @@ import (
 
 func RegisterRoutes(e *echo.Echo, shortenHandler ShortenHandler) {
 	e.POST("/shorten", shortenHandler.Shorten)
+	e.GET("/:short_id", shortenHandler.Resolve)
 }

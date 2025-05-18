@@ -10,6 +10,7 @@ import (
 
 type ShortenUseCase interface {
 	ShortenURL(ctx context.Context, originalUrl string) (string, error)
+	Resolve(ctx context.Context, identifier string) (string, error)
 }
 
 type shortenUseCase struct {
@@ -37,6 +38,15 @@ func (u *shortenUseCase) ShortenURL(ctx context.Context, originalUrl string) (st
 
 	finalUrl, err := buildFinalUrl(u.conf.BasePath, generated)
 	return finalUrl, err
+}
+
+func (u *shortenUseCase) Resolve(ctx context.Context, identifier string) (string, error) {
+	short, err := u.repo.Find(ctx, identifier)
+	if err != nil {
+		return "", err
+	}
+
+	return short.OriginalURL, nil
 }
 
 func buildFinalUrl(baseUrl, alias string) (string, error) {

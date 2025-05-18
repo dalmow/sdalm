@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/dalmow/sdalm/internal/short"
@@ -10,6 +11,7 @@ import (
 
 type ShortenHandler interface {
 	Shorten(ctx echo.Context) error
+	Resolve(ctx echo.Context) error
 }
 
 type shortenHandler struct {
@@ -48,4 +50,18 @@ func (h *shortenHandler) Shorten(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, echo.Map{
 		"short": shortened,
 	})
+}
+
+func (h *shortenHandler) Resolve(ctx echo.Context) error {
+	identifier := ctx.Param("short_id")
+	originalUrl, err := h.usecase.Resolve(ctx.Request().Context(), identifier)
+
+	if err != nil {
+		if errors.Is(err, short.ErrNotFound) {
+			return ctx.NoContent(http.StatusNotFound)
+		}
+		return ctx.NoContent(http.StatusInternalServerError)
+	}
+
+	return ctx.Redirect(http.StatusFound, originalUrl)
 }
