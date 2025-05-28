@@ -2,28 +2,23 @@ name: Build and Deploy on PR Merge
 
 on:
   workflow_dispatch:
-  pull_request:
+  push:
     branches:
       - main
-    types: [closed]
-
-permissions:
-  contents: write
 
 jobs:
-  build-and-deploy:
-    if: github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
+  build:
     environment: prd
-
+    runs-on: ubuntu-latest
+    outputs:
+      short_sha: ${{ steps.vars.outputs.short_sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup git user
-        run: |
-          git config --global user.name "dalmow"
-          git config --global user.email "kelvi.dalmazo@gmail.com"
+      - name: Extract short SHA
+        id: vars
+        run: echo "short_sha=$(echo '${{ github.sha }}' | cut -c1-6)" >> $GITHUB_OUTPUT
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -34,27 +29,33 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Extract short SHA and create tag
-        id: vars
-        run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-6)
-          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
-          git tag $SHORT_SHA
-          git push origin $SHORT_SHA
-
-      - name: Build and push Docker images
+      - name: Docker image build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/sdalm:latest
-            ${{ secrets.DOCKER_USERNAME }}/sdalm:${{ env.SHORT_SHA }}
+            ${{ vars.IMAGE_NAME }}:latest
+            ${{ vars.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Trigger deploy
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: prd
+    steps:
+      - name: Trigger Deploy Hook
         env:
           DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+          DEPLOY_HOOK_TOKEN: ${{ secrets.DEPLOY_HOOK_TOKEN }}
+          SHORT_SHA: ${{ needs.build.outputs.short_sha }}
+          FOLDER_NAME: ${{ vars.FOLDER_NAME }}
+          SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+          IMAGE_NAME: ${{ vars.IMAGE_NAME }}
         run: |
-          curl --fail "$DEPLOY_HOOK_URL"
+          curl --fail --connect-timeout 10 --max-time 120 \
+            -X POST "$DEPLOY_HOOK_URL" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $DEPLOY_HOOK_TOKEN" \
+            -d "{\"folder\":\"${FOLDER_NAME}\",\"service\":\"${SERVICE_NAME}\",\"image\":\"${IMAGE_NAME}:${SHORT_SHA}\"}"

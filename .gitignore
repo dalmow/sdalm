@@ -29,3 +29,4 @@ go.work.sum
 
 # Out
 dist
+.DS_Store
