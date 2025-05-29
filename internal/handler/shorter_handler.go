@@ -27,6 +27,7 @@ func NewShortenHandler(usecase short.ShortenUseCase, logger *zap.Logger) Shorten
 }
 
 func (h *shortenHandler) Shorten(ctx echo.Context) error {
+	h.logger.Info("shorten URL request received")
 	type request struct {
 		URL string `json:"url" validate:"required,url"`
 	}
@@ -47,12 +48,15 @@ func (h *shortenHandler) Shorten(ctx echo.Context) error {
 		return ctx.JSON(http.StatusInternalServerError, echo.Map{"error": "could not shorten URL"})
 	}
 
+	h.logger.Info("URL shortened successfully", zap.String("shortened", shortened))
+
 	return ctx.JSON(http.StatusOK, echo.Map{
 		"short": shortened,
 	})
 }
 
 func (h *shortenHandler) Resolve(ctx echo.Context) error {
+	h.logger.Info("resolve short URL request received")
 	identifier := ctx.Param("short_id")
 	originalUrl, err := h.usecase.Resolve(ctx.Request().Context(), identifier)
 
@@ -62,6 +66,8 @@ func (h *shortenHandler) Resolve(ctx echo.Context) error {
 		}
 		return ctx.NoContent(http.StatusInternalServerError)
 	}
+
+	h.logger.Info("URL resolved successfully", zap.String("originalUrl", originalUrl))
 
 	return ctx.Redirect(http.StatusFound, originalUrl)
 }
